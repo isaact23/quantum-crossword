@@ -2,8 +2,12 @@
 
 import dimod
 from dwave.system import LeapHybridCQMSampler
+from words import WORDS
 
-def example():
+# Define crossword width and height
+SIZE = 9
+
+def gen():
     # 10 qubits
     x = [dimod.Binary(f'x_{i}') for i in range(10)]
     cqm = dimod.ConstrainedQuadraticModel()
@@ -21,4 +25,4 @@ def example():
 
 
 if __name__ == '__main__':
-    example()
+    gen()
