@@ -11,3 +11,5 @@ WORDS = ['magic', 'wiry', 'muscle', 'wrist', 'train', 'zany', 'boast', 'nonchala
          'miniature', 'tasteful', 'rapid', 'bat', 'fear', 'hysterical', 'conscious', 'ancient', 'towering', 'knot',
          'allow', 'easy', 'bawdy', 'rustic', 'crowd', 'abortive', 'scrawny', 'drunk', 'evanescent', 'guarded', 'odd',
          'imaginary', 'decide', 'hug', 'phobic', 'truck']
+
+LETTERS = 'abcdefghijklmnopqrstuvwxyz'
