@@ -8,7 +8,7 @@ import neal
 from words import WORDS
 
 # Crossword constants
-CROSSWORD_SIZE = 5  # Width and height
+CROSSWORD_SIZE = 6  # Width and height
 WORD_LIMIT = 50  # Maximum number of words
 
 
@@ -83,9 +83,19 @@ def gen():
     for i in range(CROSSWORD_SIZE):
         for j in range(CROSSWORD_SIZE):
             q = qubit_offsets[i][j]
-            qubo[(q, q)] += 1
+            qubo[(q, q)] += 0
 
     # There can be at most one letter per square.
+    for i in range(CROSSWORD_SIZE):
+        for j in range(CROSSWORD_SIZE):
+            q = qubit_offsets[i][j]
+            for k1 in range(26):
+                q1 = q + k1 + 1
+                qubo[(q1, q1)] -= 1
+                for k2 in range(k1 + 1, 26):
+                    q2 = q + k2 + 1
+                    qubo[(q1, q2)] += 2
+
     # There can be at most one horizontal word per square.
     # There can be at most one vertical word per square.
     # If there is a horizontal word, the squares before and after must be empty.
@@ -94,7 +104,7 @@ def gen():
     # If there is a vertical word, all letters must be present.
 
     # Solve QUBO
-    result = neal.SimulatedAnnealingSampler().sample_qubo(Q=qubo, num_reads=5)
+    result = neal.SimulatedAnnealingSampler().sample_qubo(Q=qubo, num_reads=1)
 
     # Generate crossword puzzle from result
     crossword = {}
