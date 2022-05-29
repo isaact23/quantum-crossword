@@ -57,7 +57,7 @@ def gen():
         word_counts_under[i] = 0
     for max_length in word_counts:
         word_counts_under[max_length] = 0
-        for i in range(3, max_length + 1):
+        for i in range(max_length + 1):
             word_counts_under[max_length] += word_counts.get(i)
 
     # Get number of qubits per square
@@ -97,11 +97,35 @@ def gen():
                     qubo[(q1, q2)] += 2
 
     # There can be at most one horizontal word per square.
+    # TODO: ADD SLACK VARIABLE TO ALLOW 0 OR 1.
+    for i in range(CROSSWORD_SIZE):
+        for j in range(CROSSWORD_SIZE):
+            q = qubit_offsets[i][j]
+            word_count = word_counts_under[CROSSWORD_SIZE - j]
+            for k1 in range(word_count):
+                q1 = q + k1 + 27
+                qubo[(q1, q1)] -= 1
+                for k2 in range(k1 + 1, word_count):
+                    q2 = q + k2 + 27
+                    qubo[(q1, q2)] += 2
+
     # There can be at most one vertical word per square.
+    # TODO: ADD SLACK VARIABLE TO ALLOW 0 OR 1.
+    for i in range(CROSSWORD_SIZE):
+        for j in range(CROSSWORD_SIZE):
+            q = qubit_offsets[i][j]
+            word_count = word_counts_under[CROSSWORD_SIZE - i]
+            for k1 in range(word_count):
+                q1 = q + k1 + 27 + word_count
+                qubo[(q1, q1)] -= 1
+                for k2 in range(k1 + 1, word_count):
+                    q2 = q + k2 + 27 + word_count
+                    qubo[(q1, q2)] += 2
+
     # If there is a horizontal word, the squares before and after must be empty.
     # If there is a vertical word, the squares below and above must be empty.
-    # If there is a horizontal word, all letters must be present.
-    # If there is a vertical word, all letters must be present.
+    # If there is a horizontal word, all letters must be present and open.
+    # If there is a vertical word, all letters must be present and open.
 
     # Solve QUBO
     result = neal.SimulatedAnnealingSampler().sample_qubo(Q=qubo, num_reads=1)
