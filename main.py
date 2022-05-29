@@ -1,7 +1,7 @@
 # Quantum Crossword
 
 # Each square is: 1 qubit if is a letter, 26 qubits for the letter, 100 qubits for word across,
-# 100 qubits for word down.
+# 100 qubits for word down, 2 qubits to allow either 0 or 1 horizontal or vertical words.
 
 import dimod
 import neal
@@ -68,8 +68,8 @@ def gen():
         for j in range(CROSSWORD_SIZE):
             qubit_offsets[i][j] = qubits
 
-            # Letter / enabled qubits
-            qubits += 27
+            # Letter / enabled / slack qubits
+            qubits += 29
 
             # Qubits for each word
             qubits += word_counts_under.get(CROSSWORD_SIZE - i)
@@ -97,32 +97,42 @@ def gen():
                     qubo[(q1, q2)] += 2
 
     # There can be at most one horizontal word per square.
-    # TODO: ADD SLACK VARIABLE TO ALLOW 0 OR 1.
     for i in range(CROSSWORD_SIZE):
         for j in range(CROSSWORD_SIZE):
             q = qubit_offsets[i][j]
-            word_count = word_counts_under[CROSSWORD_SIZE - j]
-            for k1 in range(word_count):
-                q1 = q + k1 + 27
+            word_count_row = word_counts_under[CROSSWORD_SIZE - j]
+            word_count_col = word_counts_under[CROSSWORD_SIZE - i]
+            y = q + 27 + word_count_row + word_count_col
+            qubo[(y, y)] -= 1
+            for k1 in range(word_count_row):
+                q1 = q + 27 + k1
                 qubo[(q1, q1)] -= 1
-                for k2 in range(k1 + 1, word_count):
-                    q2 = q + k2 + 27
+                qubo[(q1, y)] += 2
+                for k2 in range(k1 + 1, word_count_row):
+                    q2 = q + 27 + k2
                     qubo[(q1, q2)] += 2
 
     # There can be at most one vertical word per square.
-    # TODO: ADD SLACK VARIABLE TO ALLOW 0 OR 1.
     for i in range(CROSSWORD_SIZE):
         for j in range(CROSSWORD_SIZE):
             q = qubit_offsets[i][j]
-            word_count = word_counts_under[CROSSWORD_SIZE - i]
-            for k1 in range(word_count):
-                q1 = q + k1 + 27 + word_count
+            word_count_row = word_counts_under[CROSSWORD_SIZE - j]
+            word_count_col = word_counts_under[CROSSWORD_SIZE - i]
+            y = q + 27 + word_count_row + word_count_col + 1
+            qubo[(y, y)] -= 1
+            for k1 in range(word_count_col):
+                q1 = q + 27 + k1 + word_count_row
                 qubo[(q1, q1)] -= 1
-                for k2 in range(k1 + 1, word_count):
-                    q2 = q + k2 + 27 + word_count
+                qubo[(q1, y)] += 2
+                for k2 in range(k1 + 1, word_count_col):
+                    q2 = q + 27 + k2 + word_count_row
                     qubo[(q1, q2)] += 2
 
     # If there is a horizontal word, the squares before and after must be empty.
+    for i in range(CROSSWORD_SIZE):
+        for j in range(CROSSWORD_SIZE):
+            pass
+
     # If there is a vertical word, the squares below and above must be empty.
     # If there is a horizontal word, all letters must be present and open.
     # If there is a vertical word, all letters must be present and open.
