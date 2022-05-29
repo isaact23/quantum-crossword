@@ -1,7 +1,7 @@
 # Quantum Crossword
 
-# Each square is: 1 qubit if is a letter, 26 qubits for the letter, 100 qubits for word across,
-# 100 qubits for word down, 2 qubits to allow either 0 or 1 horizontal or vertical words.
+# Each square is: 1 qubit if horizontal, 1 qubit if vertical, 100+ qubits for horizontal word, 100+ qubits for
+# vertical word.
 
 import dimod
 import neal
@@ -75,97 +75,18 @@ def gen():
         for j in range(CROSSWORD_SIZE):
             qubit_offsets[i][j] = qubits
 
-            # Letter / enabled / slack qubits
-            qubits += 29
+            # Qubits for horizontal/vertical enabled
+            qubits += 2
 
             # Qubits for each word
-            qubits += word_counts_under.get(CROSSWORD_SIZE - i)
-            qubits += word_counts_under.get(CROSSWORD_SIZE - j)
+            qubits += word_counts_under[CROSSWORD_SIZE - i]
+            qubits += word_counts_under[CROSSWORD_SIZE - j]
 
     qubo = gen_empty_qubo(qubits)
 
     # Constraints:
 
-    # The more letters filled, the better the solution.
-    for i in range(CROSSWORD_SIZE):
-        for j in range(CROSSWORD_SIZE):
-            q = qubit_offsets[i][j]
-            qubo[(q, q)] -= 0.1
 
-    # Letters must be part of a word.
-    for i in range(CROSSWORD_SIZE):
-        for j in range(CROSSWORD_SIZE):
-            pass
-
-    # There can be at most one letter per square.
-    for i in range(CROSSWORD_SIZE):
-        for j in range(CROSSWORD_SIZE):
-            q = qubit_offsets[i][j]
-            for k1 in range(26):
-                q1 = q + k1 + 1
-                qubo[(q1, q1)] -= 1
-                for k2 in range(k1 + 1, 26):
-                    q2 = q + k2 + 1
-                    qubo[(q1, q2)] += 2
-
-    # There can be at most one horizontal word per square.
-    for i in range(CROSSWORD_SIZE):
-        for j in range(CROSSWORD_SIZE):
-            q = qubit_offsets[i][j]
-            word_count_row = word_counts_under[CROSSWORD_SIZE - j]
-            word_count_col = word_counts_under[CROSSWORD_SIZE - i]
-            y = q + 27 + word_count_row + word_count_col
-            qubo[(y, y)] -= 1
-            for k1 in range(word_count_row):
-                q1 = q + 27 + k1
-                qubo[(q1, q1)] -= 1
-                qubo[(q1, y)] += 2
-                for k2 in range(k1 + 1, word_count_row):
-                    q2 = q + 27 + k2
-                    qubo[(q1, q2)] += 2
-
-    # There can be at most one vertical word per square.
-    for i in range(CROSSWORD_SIZE):
-        for j in range(CROSSWORD_SIZE):
-            q = qubit_offsets[i][j]
-            word_count_row = word_counts_under[CROSSWORD_SIZE - j]
-            word_count_col = word_counts_under[CROSSWORD_SIZE - i]
-            y = q + 27 + word_count_row + word_count_col + 1
-            qubo[(y, y)] -= 1
-            for k1 in range(word_count_col):
-                q1 = q + 27 + k1 + word_count_row
-                qubo[(q1, q1)] -= 1
-                qubo[(q1, y)] += 2
-                for k2 in range(k1 + 1, word_count_col):
-                    q2 = q + 27 + k2 + word_count_row
-                    qubo[(q1, q2)] += 2
-
-    # If there is a horizontal word, the squares before and after must be empty.
-    # If there is a horizontal word, all letters must be present and open.
-    for i in range(CROSSWORD_SIZE):
-        for j in range(CROSSWORD_SIZE):
-            q = qubit_offsets[i][j]
-            word_count_row = word_counts_under[CROSSWORD_SIZE - j]
-            for k in range(word_count_row):
-                q1 = q + 27 + k  # Horizontal word enabled
-                word = word_list[k]
-                if j > 0:
-                    q2 = qubit_offsets[i][j - 1]  # Letter enabled
-                    qubo[(q2, q1)] += 1
-                if j < CROSSWORD_SIZE - len(word):
-                    q2 = qubit_offsets[i][j + len(word)]  # Letter enabled
-                    qubo[(q1, q2)] += 1
-                for l in range(len(word)):
-                    q2 = qubit_offsets[i][j + l] + ord(word[l]) - 96  # Letter id
-                    qubo[(q1, q1)] += 1
-                    if q1 > q2:
-                        qubo[(q2, q1)] -= 1
-                    else:
-                        qubo[(q1, q2)] -= 1
-
-
-    # If there is a vertical word, the squares below and above must be empty.
-    # If there is a vertical word, all letters must be present and open.
 
     # Solve QUBO
     result = neal.SimulatedAnnealingSampler().sample_qubo(Q=qubo, num_reads=1)
