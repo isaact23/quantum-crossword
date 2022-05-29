@@ -9,7 +9,7 @@ from words import WORDS
 
 # Crossword constants
 CROSSWORD_SIZE = 6  # Width and height
-WORD_LIMIT = 50  # Maximum number of words
+WORD_LIMIT = 100  # Maximum number of words
 
 
 # Sort words into their lengths
@@ -50,6 +50,7 @@ def gen():
         word_sublist = sorted_words.get(i)
         if word_sublist is not None:
             word_list += word_sublist
+    print(word_list)
 
     # Get total number of words of each length
     word_counts = {}
@@ -86,53 +87,77 @@ def gen():
 
     # Constraints:
 
+    # Up to one horizontal and one vertical word per square.
+    for i in range(CROSSWORD_SIZE):
+        for j in range(CROSSWORD_SIZE):
+            q = qubit_offsets[i][j]
+
+            # Horizontals
+            y1 = q
+            qubo[(y1, y1)] += 1
+            row_word_count = word_counts_under[CROSSWORD_SIZE - j]
+            for k in range(row_word_count):
+                x = q + 2 + k
+                qubo[(x, x)] += 1
+                qubo[(y1, x)] -= 2
+                for k2 in range(k + 1, row_word_count):
+                    x2 = q + 2 + k2
+                    qubo[(x, x2)] += 2
+
+            # Verticals
+            y2 = y1 + 1
+            qubo[(y2, y2)] += 1
+            col_word_count = word_counts_under[CROSSWORD_SIZE - i]
+            for k in range(col_word_count):
+                x = q + 2 + row_word_count + k
+                qubo[(x, x)] += 1
+                qubo[(y1, x)] -= 2
+                for k2 in range(k + 1, col_word_count):
+                    x2 = q + 2 + row_word_count + k2
+                    qubo[(x, x2)] += 2
+
 
 
     # Solve QUBO
     result = neal.SimulatedAnnealingSampler().sample_qubo(Q=qubo, num_reads=1)
 
     # Generate crossword puzzle from result
-    crossword = {}
     crossword_words_row = {}
     crossword_words_col = {}
     datum = result.first
     sample = datum.sample
     energy = datum.energy
     for i in range(CROSSWORD_SIZE):
-        crossword[i] = {}
         crossword_words_row[i] = {}
         crossword_words_col[i] = {}
         for j in range(CROSSWORD_SIZE):
-            offset = qubit_offsets[i][j]
-            crossword[i][j] = '-'
+            q = qubit_offsets[i][j] + 2
             crossword_words_row[i][j] = ''
             crossword_words_col[i][j] = ''
-            if sample[offset] == 1:
-                for k in range(26):
-                    if sample[offset + k + 1] == 1:
-                        crossword[i][j] = chr(k + 97)
-                        break
+
+            # Find words associated with enabled qubits
             row_word_count = word_counts_under[CROSSWORD_SIZE - j]
             for k in range(row_word_count):
-                if sample[offset + 27 + k] == 1:
+                if sample[q + k] == 1:
                     crossword_words_row[i][j] = word_list[k]
                     break
             col_word_count = word_counts_under[CROSSWORD_SIZE - i]
             for k in range(col_word_count):
-                if sample[offset + 27 + row_word_count + k] == 1:
+                if sample[q + row_word_count + k] == 1:
                     crossword_words_col[i][j] = word_list[k]
                     break
 
     # Print results
-    for row in crossword:
-        for col in crossword[row]:
-            letter = crossword[row][col]
-            print(f'[{letter}] ', end='')
-        print()
-
+    print("Rows:")
     for row in crossword_words_row:
         for col in crossword_words_row:
             word = crossword_words_row[row][col]
+            print(f'[{word:{8}}] ', end='')
+        print()
+    print("Cols:")
+    for row in crossword_words_col:
+        for col in crossword_words_col:
+            word = crossword_words_col[row][col]
             print(f'[{word:{8}}] ', end='')
         print()
 
