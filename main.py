@@ -79,6 +79,12 @@ def gen():
 
     # Constraints:
 
+    # If a square is not occupied by a word, it must be blank.
+    for i in range(CROSSWORD_SIZE):
+        for j in range(CROSSWORD_SIZE):
+            q = qubit_offsets[i][j]
+            qubo[(q, q)] += 1
+
     # There can be at most one letter per square.
     # There can be at most one horizontal word per square.
     # There can be at most one vertical word per square.
@@ -86,7 +92,6 @@ def gen():
     # If there is a vertical word, the squares below and above must be empty.
     # If there is a horizontal word, all letters must be present.
     # If there is a vertical word, all letters must be present.
-    # If a square is not occupied by a word, it must be blank.
 
     # Solve QUBO
     result = neal.SimulatedAnnealingSampler().sample_qubo(Q=qubo, num_reads=5)
