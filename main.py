@@ -83,7 +83,7 @@ def gen():
     for i in range(CROSSWORD_SIZE):
         for j in range(CROSSWORD_SIZE):
             q = qubit_offsets[i][j]
-            qubo[(q, q)] += 0
+            qubo[(q, q)] += 1
 
     # There can be at most one letter per square.
     for i in range(CROSSWORD_SIZE):
