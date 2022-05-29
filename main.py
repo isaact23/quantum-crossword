@@ -44,6 +44,13 @@ def gen():
     # Sort words into their lengths
     sorted_words = sort_words(word_list)
 
+    # Overwrite word list with sorted word array
+    word_list = []
+    for i in range(CROSSWORD_SIZE + 1):
+        word_sublist = sorted_words.get(i)
+        if word_sublist is not None:
+            word_list += word_sublist
+
     # Get total number of words of each length
     word_counts = {}
     for i in range(CROSSWORD_SIZE):
@@ -79,11 +86,16 @@ def gen():
 
     # Constraints:
 
-    # If a square is not occupied by a word, it must be blank.
+    # The more letters filled, the better the solution.
     for i in range(CROSSWORD_SIZE):
         for j in range(CROSSWORD_SIZE):
             q = qubit_offsets[i][j]
-            qubo[(q, q)] += 1
+            qubo[(q, q)] -= 0.1
+
+    # Letters must be part of a word.
+    for i in range(CROSSWORD_SIZE):
+        for j in range(CROSSWORD_SIZE):
+            pass
 
     # There can be at most one letter per square.
     for i in range(CROSSWORD_SIZE):
@@ -129,12 +141,30 @@ def gen():
                     qubo[(q1, q2)] += 2
 
     # If there is a horizontal word, the squares before and after must be empty.
+    # If there is a horizontal word, all letters must be present and open.
     for i in range(CROSSWORD_SIZE):
         for j in range(CROSSWORD_SIZE):
-            pass
+            q = qubit_offsets[i][j]
+            word_count_row = word_counts_under[CROSSWORD_SIZE - j]
+            for k in range(word_count_row):
+                q1 = q + 27 + k  # Horizontal word enabled
+                word = word_list[k]
+                if j > 0:
+                    q2 = qubit_offsets[i][j - 1]  # Letter enabled
+                    qubo[(q2, q1)] += 1
+                if j < CROSSWORD_SIZE - len(word):
+                    q2 = qubit_offsets[i][j + len(word)]  # Letter enabled
+                    qubo[(q1, q2)] += 1
+                for l in range(len(word)):
+                    q2 = qubit_offsets[i][j + l] + ord(word[l]) - 96  # Letter id
+                    qubo[(q1, q1)] += 1
+                    if q1 > q2:
+                        qubo[(q2, q1)] -= 1
+                    else:
+                        qubo[(q1, q2)] -= 1
+
 
     # If there is a vertical word, the squares below and above must be empty.
-    # If there is a horizontal word, all letters must be present and open.
     # If there is a vertical word, all letters must be present and open.
 
     # Solve QUBO
@@ -142,25 +172,48 @@ def gen():
 
     # Generate crossword puzzle from result
     crossword = {}
+    crossword_words_row = {}
+    crossword_words_col = {}
     datum = result.first
     sample = datum.sample
     energy = datum.energy
     for i in range(CROSSWORD_SIZE):
         crossword[i] = {}
+        crossword_words_row[i] = {}
+        crossword_words_col[i] = {}
         for j in range(CROSSWORD_SIZE):
             offset = qubit_offsets[i][j]
             crossword[i][j] = '-'
+            crossword_words_row[i][j] = ''
+            crossword_words_col[i][j] = ''
             if sample[offset] == 1:
                 for k in range(26):
                     if sample[offset + k + 1] == 1:
                         crossword[i][j] = chr(k + 97)
                         break
+            row_word_count = word_counts_under[CROSSWORD_SIZE - j]
+            for k in range(row_word_count):
+                if sample[offset + 27 + k] == 1:
+                    crossword_words_row[i][j] = word_list[k]
+                    break
+            col_word_count = word_counts_under[CROSSWORD_SIZE - i]
+            for k in range(col_word_count):
+                if sample[offset + 27 + row_word_count + k] == 1:
+                    crossword_words_col[i][j] = word_list[k]
+                    break
+
+    # Print results
     for row in crossword:
         for col in crossword[row]:
             letter = crossword[row][col]
             print(f'[{letter}] ', end='')
         print()
 
+    for row in crossword_words_row:
+        for col in crossword_words_row:
+            word = crossword_words_row[row][col]
+            print(f'[{word:{8}}] ', end='')
+        print()
 
 if __name__ == '__main__':
     gen()
