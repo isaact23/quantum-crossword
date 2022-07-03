@@ -8,7 +8,7 @@ import neal
 from words import WORDS
 
 # Crossword constants
-CROSSWORD_SIZE = 6  # Width and height
+CROSSWORD_SIZE = 8  # Width and height
 WORD_LIMIT = 100  # Maximum number of words
 
 
@@ -50,7 +50,6 @@ def gen():
         word_sublist = sorted_words.get(i)
         if word_sublist is not None:
             word_list += word_sublist
-    print(word_list)
 
     # Get total number of words of each length
     word_counts = {}
@@ -88,6 +87,7 @@ def gen():
     # Constraints:
 
     # Up to one horizontal and one vertical word per square.
+    # Words must be short enough to fit within the crossword bounds.
     for i in range(CROSSWORD_SIZE):
         for j in range(CROSSWORD_SIZE):
             q = qubit_offsets[i][j]
@@ -116,10 +116,24 @@ def gen():
                     x2 = q + 2 + row_word_count + k2
                     qubo[(x, x2)] += 2
 
+    # For horizontal words, ensure no overlap of other words.
+    for i in range(CROSSWORD_SIZE):
+        for j in range(CROSSWORD_SIZE):
+            q = qubit_offsets[i][j]
+            row_word_count = word_counts_under[CROSSWORD_SIZE - j]
+            for k in range(row_word_count):
+                x1 = q + 2 + k
+                # TODO: Add function that allows us to 'ban' words if a qubit is enabled.
 
+
+    print("QUBO generated.")
+    print()
 
     # Solve QUBO
     result = neal.SimulatedAnnealingSampler().sample_qubo(Q=qubo, num_reads=1)
+
+    print("QUBO solved.")
+    print()
 
     # Generate crossword puzzle from result
     crossword_words_row = {}
@@ -160,6 +174,7 @@ def gen():
             word = crossword_words_col[row][col]
             print(f'[{word:{8}}] ', end='')
         print()
+
 
 if __name__ == '__main__':
     gen()
